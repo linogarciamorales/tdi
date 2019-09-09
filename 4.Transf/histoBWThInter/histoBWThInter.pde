@@ -1,0 +1,133 @@
+PImage img_in, img_out;
+double[][] im_in, im_out;
+
+int[] hist_in = new int[256];
+int[] hist_out = new int[256];
+
+int N, M;
+int[] limits = new int[2];
+int histMin = 0;
+int histMax = 0;
+
+void settings() {
+  // Make a new instance of a PImage by loading an image file
+  img_in = loadImage("../../img/detalle_BW.png");
+  //img_in = loadImage("../../img/Formula1.png");
+  //img_in = loadImage("../../img/llama.png");
+  img_in.resize(img_in.width/ 2, img_in.height/ 2);
+  N = img_in.width; 
+  M = img_in.height;
+  size(N, M);
+}
+
+void setup() {
+  colorMode(RGB);
+  image(img_in, 0, 0, N, M);
+  histo(hist_in, img_in);
+  
+  im_in = new double[N][M];
+  convert2double(im_in, img_in);
+  im_out = new double[N][M];
+  img_out = createImage(N, M, GRAY);
+  smooth();
+}
+
+void draw() {
+  if(mousePressed == true) {
+    image(img_in, 0, 0, N, M);
+  } else {
+    double alpha = map(mouseX, 0, width, 0.0, 1.0);
+    brightnessThresholding(im_out, im_in, alpha);
+    convert2Pimage(img_out, im_out);
+    image(img_out, 0, 0, N, M);
+    histo(hist_out, img_out);
+    drawHisto(hist_out, 0);
+    //save("histo_detalle_BW_th.png");
+  }
+}
+
+void histo(int[] hist, PImage img) {
+  // Calculate the histogram
+  for(int k = 0; k < img.pixels.length; k++) {
+      int bright = int(brightness(img.pixels[k]));
+      hist[bright]++;
+  }
+}
+
+void drawHisto(int[] hist, int xdisp) {
+  int histMax = max(hist);
+  stroke(255);
+  // Draw half of the histogram (skip every second value)
+  for (int i = 0; i < N; i += 2) {
+    // Map i (from 0..img.width) to a location in the histogram (0..255)
+    int which = int(map(i, 0, N, 0, 255));
+    // Convert the histogram value to a location between 
+    // the bottom and the top of the picture
+    int y = int(map(hist[which], 0, histMax, M, 0));
+    line(i+xdisp, M, i+xdisp, y);
+  }
+}
+
+int maxIndex(int[] hist) {
+  int pos = -1;
+  int max = Integer.MIN_VALUE; //lowest possible value of an int.
+  for(int i=0; i < hist.length; i++) {
+    if(hist[i] > max) {
+      pos = i;
+      max = hist[i];
+    }
+  }
+  return pos;
+}
+
+int minIndex(int[] hist) {
+  int pos = -1;
+  int min = Integer.MAX_VALUE; //lowest possible value of an int.
+  for(int i = 0; i < hist.length; i++) {
+    if(hist[i] < min) {
+      pos = i;
+      min = hist[i];
+    }
+  }
+  return pos;
+}
+
+void brightnessThresholding(double[][] out,double[][] in, double th) {
+  // thresholding
+  for(int k = 0, x = 0, y = 0; k < N* M; k++, x = k % N, y = int(k / N)) {
+    if(in[x][y] < th) {
+      out[x][y] = 0.0;
+    } else { 
+      out[x][y] = 1.0;
+    }
+  }
+}
+
+void constrainLimits(double[][] a) {
+  for(int k = 0, x = 0, y = 0; k < N* M; k++, x = k % N, y = int(k / N)) {
+      if(a[x][y] > 1.0) {
+        a[x][y] = 1.0;
+      }
+      if(a[x][y] < 0.0) {
+        a[x][y] = 0.0;
+      }
+  }
+}
+
+void convert2double(double[][] im, PImage img) {
+  int rows = im.length;
+  for(int k = 0, row = 0, col = 0; k < img.pixels.length; k++, row= k% rows, col= int(k/ rows)) {
+    im[row][col] = map(red(img.pixels[k]), 0, 255, 0, 1.0);
+  }
+}
+
+void convert2Pimage(PImage img, double[][] im) {
+  //img.loadPixels();
+  int rows = im.length;
+  for (int k = 0, row = 0, col = 0; k < img.pixels.length; k++, row= k% rows, col = int(k / rows)) {
+    double Y = im[row][col]* 255;
+    //img.pixels[k] = color(Y);
+    img.set(row, col, color((float)Y));
+  }
+  //img.updatePixels();
+}
